@@ -10,6 +10,7 @@ def predict_text_mod(text, model_name="text-moderation-latest"):
         model = model_name
     )
     moderation_class = response["results"][0]
+    # moderation_class['input_text'] = text
 
     return moderation_class
 

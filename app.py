@@ -14,17 +14,22 @@ PORT = os.getenv("PORT")
 def text_mod():
     if request.method == 'POST':
 
-        if 'text' in request.form:
-            input_text = request.form['text']
-            response = predict_text_mod(input_text)
-            return render_template('result.html', response=response, type='text')
-        
-        elif 'image' in request.files:
-            input_image = request.files['image']
-            image_path = save_image(input_image)
-            response = image_moderate(image_path)
-            return render_template('result.html', response=response, type='image')
-        
+        try:
+            if 'text' in request.form:
+                input_text = request.form['text']
+                response = predict_text_mod(input_text)
+                return render_template('index.html', response=response, type='text')
+            
+            elif 'image' in request.files:
+                input_image = request.files['image']
+                image_path = save_image(input_image)
+                response = image_moderate(image_path)
+                return render_template('index.html', response=response, type='image')
+            
+        except:
+            response = "Request Failed"
+            return render_template('index.html', response=response, type='image')
+
     return render_template('index.html')
 
 
