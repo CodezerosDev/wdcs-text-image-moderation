@@ -4,6 +4,8 @@ import os
 from flask import Flask, render_template, request
 from text_model import predict_text_mod
 from image_model import image_moderate
+from video_model import moderate_video
+from merge_video_moderation import video_moderation
 
 app = Flask(__name__)
 
@@ -26,6 +28,12 @@ def text_mod():
                 response = image_moderate(image_path)
                 return render_template('index.html', response=response, type='image')
             
+            elif 'video' in request.files:
+                input_video = request.files['video']
+                video_path = save_video(input_video)
+                response = video_moderation(video_path)
+                return render_template('index.html', response=response, type='video')
+            
         except:
             response = "Request Failed"
             return render_template('index.html', response=response, type='image')
@@ -38,6 +46,11 @@ def save_image(image):
     image.save(image_path)
     return image_path
 
+def save_video(video):
+    video_path = os.path.join('Videos', video.filename)
+    video.save(video_path)
+    return video_path
+
 
 if __name__ == "__main__":
-    app.run(host=HOST, port=PORT)
+    app.run(host=HOST, port=PORT, debug=True)

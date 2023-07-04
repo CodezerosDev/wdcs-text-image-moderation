@@ -33,3 +33,7 @@ urllib3==2.0.3
 Werkzeug==2.3.6
 yarl==1.9.2
 zipp==3.15.0
+googletrans==4.0.0-rc1
+moviepy==1.0.3
+librosa==0.10.0.post2
+openai-whisper==20230314
