@@ -16,7 +16,7 @@ PORT = os.getenv("PORT")
 def text_mod():
     if request.method == 'POST':
 
-        try:
+        # try:
             if 'text' in request.form:
                 input_text = request.form['text']
                 response = predict_text_mod(input_text)
@@ -34,9 +34,9 @@ def text_mod():
                 response = video_moderation(video_path)
                 return render_template('index.html', response=response, type='video')
             
-        except:
-            response = "Request Failed"
-            return render_template('index.html', response=response, type='image')
+        # except:
+        #     response = "Request Failed"
+        #     return render_template('index.html', response=response, type='image')
 
     return render_template('index.html')
 

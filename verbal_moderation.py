@@ -6,6 +6,8 @@ import numpy as np
 from googletrans import Translator
 from moviepy.editor import VideoFileClip
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 ### Extract Audio from Video ### 
 def video_to_audio(video_path, audio_path):
     video = VideoFileClip(video_path)
@@ -41,14 +43,13 @@ def translate_text(text, target_language="en"):
     translated_text = translation.text
     return translated_text
 
-openai.api_key = "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"
-
 ### Check Moderation on Translated Text ###
 def check_moderation(text, model_name="text-moderation-latest"):
     print("Checking Moderation of the Text")
     response = openai.Moderation.create(
         input = text,
         model = model_name,
+        api_key = OPENAI_API_KEY
     )
     moderation_class = response["results"][0]
     return moderation_class
