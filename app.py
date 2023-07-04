@@ -4,8 +4,8 @@ import os
 from flask import Flask, render_template, request
 from text_model import predict_text_mod
 from image_model import image_moderate
-from video_model import moderate_video
-from merge_video_moderation import video_moderation
+from video_model import video_moderate
+from audio_model import audio_moderate
 
 app = Flask(__name__)
 
@@ -16,7 +16,7 @@ PORT = os.getenv("PORT")
 def text_mod():
     if request.method == 'POST':
 
-        # try:
+        try:
             if 'text' in request.form:
                 input_text = request.form['text']
                 response = predict_text_mod(input_text)
@@ -31,18 +31,24 @@ def text_mod():
             elif 'video' in request.files:
                 input_video = request.files['video']
                 video_path = save_video(input_video)
-                response = video_moderation(video_path)
+                response = video_moderate(video_path)
                 return render_template('index.html', response=response, type='video')
             
-        # except:
-        #     response = "Request Failed"
-        #     return render_template('index.html', response=response, type='image')
+            elif 'audio' in request.files:
+                input_audio = request.files['audio']
+                audio_path = save_audio(input_audio)
+                response = audio_moderate(audio_path)
+                return render_template('index.html', response=response, type='audio')
+            
+        except:
+            response = "Request Failed"
+            return render_template('index.html', response=response, type='image')
 
     return render_template('index.html')
 
 
 def save_image(image):
-    image_path = os.path.join('input_images', image.filename)
+    image_path = os.path.join('Images', image.filename)
     image.save(image_path)
     return image_path
 
@@ -50,6 +56,11 @@ def save_video(video):
     video_path = os.path.join('Videos', video.filename)
     video.save(video_path)
     return video_path
+
+def save_audio(audio):
+    audio_path = os.path.join('Audios', audio.filename)
+    audio.save(audio_path)
+    return audio_path
 
 
 if __name__ == "__main__":
