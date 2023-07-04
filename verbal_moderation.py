@@ -1,13 +1,7 @@
 import os
-import openai
-import whisper
-import librosa
-import numpy as np
-from googletrans import Translator
 from moviepy.editor import VideoFileClip
 from audio_model import audio_moderate
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 ### Extract Audio from Video ### 
 def video_to_audio(video_path, audio_path):
