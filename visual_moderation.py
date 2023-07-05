@@ -280,8 +280,8 @@ def check_visual_moderation(video_path, output_dir="./video_frames", image_size=
     scores = classifier.classify(image_paths, image_size=image_size)
 
     # Delete the extracted frames
-    # for image_path in image_paths:
-    #     os.remove(image_path)
+    for image_path in image_paths:
+        os.remove(image_path)
 
     # Print moderation scores for each frame
     count = 0
