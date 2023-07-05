@@ -26,21 +26,18 @@ def text_mod():
                 input_image = request.files['image']
                 image_path = save_image(input_image)
                 response = image_moderate(image_path)
-                os.remove(image_path)
                 return render_template('index.html', response=response, type='image')
             
             elif 'video' in request.files:
                 input_video = request.files['video']
                 video_path = save_video(input_video)
                 response = video_moderate(video_path)
-                os.remove(video_path)
                 return render_template('index.html', response=response, type='video')
             
             elif 'audio' in request.files:
                 input_audio = request.files['audio']
                 audio_path = save_audio(input_audio)
                 response = audio_moderate(audio_path)
-                os.remove(audio_path)
                 return render_template('index.html', response=response, type='audio')
             
         # except:
