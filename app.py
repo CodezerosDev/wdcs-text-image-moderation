@@ -16,7 +16,7 @@ PORT = os.getenv("PORT")
 def text_mod():
     if request.method == 'POST':
 
-        try:
+        # try:
             if 'text' in request.form:
                 input_text = request.form['text']
                 response = predict_text_mod(input_text)
@@ -43,30 +43,24 @@ def text_mod():
                 os.remove(audio_path)
                 return render_template('index.html', response=response, type='audio')
             
-        except:
-            response = "Request Failed"
-            return render_template('index.html', response=response, type='image')
+        # except:
+        #     response = "Request Failed"
+        #     return render_template('index.html', response=response, type='image')
 
     return render_template('index.html')
 
 
 def save_image(image):
-    if not os.path.exists("Images"):
-        os.makedirs("Images")
     image_path = os.path.join('Images', image.filename)
     image.save(image_path)
     return image_path
 
 def save_video(video):
-    if not os.path.exists("Videos"):
-        os.makedirs("Videos")
     video_path = os.path.join('Videos', video.filename)
     video.save(video_path)
     return video_path
 
 def save_audio(audio):
-    if not os.path.exists("Audios"):
-        os.makedirs("Audios")
     audio_path = os.path.join('Audios', audio.filename)
     audio.save(audio_path)
     return audio_path
