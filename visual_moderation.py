@@ -263,10 +263,10 @@ def load_images(image_dir, image_size, image_names):
 
     return np.asarray(loaded_images), loaded_image_paths
 
-def check_visual_moderation(video_path, output_dir="video_frames", image_size=(256, 256)):
+def check_visual_moderation(video_path, output_dir="./video_frames", image_size=(256, 256)):
     # Create output directory if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # if not os.path.exists(output_dir):
+    #     os.makedirs(output_dir)
 
     # Extract frames from the video
     frame_per_seconds = extract_frames(video_path, output_dir)
@@ -280,8 +280,8 @@ def check_visual_moderation(video_path, output_dir="video_frames", image_size=(2
     scores = classifier.classify(image_paths, image_size=image_size)
 
     # Delete the extracted frames
-    for image_path in image_paths:
-        os.remove(image_path)
+    # for image_path in image_paths:
+    #     os.remove(image_path)
 
     # Print moderation scores for each frame
     count = 0

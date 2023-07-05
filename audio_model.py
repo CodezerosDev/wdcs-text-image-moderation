@@ -3,6 +3,15 @@ import whisper
 import librosa
 import numpy as np
 from googletrans import Translator
+from moviepy.editor import AudioFileClip
+
+def duration_check(audio_file):
+    audio = AudioFileClip(audio_file)
+    audio_duration = audio.duration
+    if audio_duration > 45:
+        return False
+    else:
+        return True
 
 def transcribe_audio(audio_file):
     print("Transcribing the Audio")
@@ -18,7 +27,6 @@ def translate_text(text, target_language):
     translation = translator.translate(text, dest=target_language)
     return translation.text
 
-
 def check_moderation(text, model_name="text-moderation-latest"):
     print("Checking Moderation of the Text")
     response = openai.Moderation.create(
@@ -29,10 +37,14 @@ def check_moderation(text, model_name="text-moderation-latest"):
     return moderation_class
 
 def audio_moderate(audio_file):
-    transcribed_result = transcribe_audio(audio_file)
-    translated_text = translate_text(transcribed_result["text"], "en")
-    MODERATION_CLASS = check_moderation(translated_text)
-    return MODERATION_CLASS
+    length = duration_check(audio_file)
+    if length == False:
+        return "Please upload audio file having length of duration less than 45 seconds"
+    else:
+        transcribed_result = transcribe_audio(audio_file)
+        translated_text = translate_text(transcribed_result["text"], "en")
+        MODERATION_CLASS = check_moderation(translated_text)
+        return MODERATION_CLASS
 
 if __name__ == "__main__":
 

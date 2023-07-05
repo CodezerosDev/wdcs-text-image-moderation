@@ -48,17 +48,17 @@ def text_mod():
 
 
 def save_image(image):
-    image_path = os.path.join('Images', image.filename)
+    image_path = os.path.join('./Images', image.filename)
     image.save(image_path)
     return image_path
 
 def save_video(video):
-    video_path = os.path.join('Videos', video.filename)
+    video_path = os.path.join('./Videos', video.filename)
     video.save(video_path)
     return video_path
 
 def save_audio(audio):
-    audio_path = os.path.join('Audios', audio.filename)
+    audio_path = os.path.join('./Audios', audio.filename)
     audio.save(audio_path)
     return audio_path
 
