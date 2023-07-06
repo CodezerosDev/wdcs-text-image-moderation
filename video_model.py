@@ -1,6 +1,7 @@
 import time
 from verbal_moderation import check_audio_moderation
 from visual_moderation import check_visual_moderation
+# from old_visual_moderation import check_visual_moderation
 
 
 def video_moderate(video_filepath):

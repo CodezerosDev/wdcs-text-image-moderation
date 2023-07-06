@@ -1,145 +1,133 @@
-import os
-import io
-import logging
 import cv2
-from PIL import Image as pil_image
+import os
+import logging
+
+import pydload
 import numpy as np
 import onnxruntime
 
-
-if pil_image is not None:
-    _PIL_INTERPOLATION_METHODS = {
-        "nearest": pil_image.NEAREST,
-        "bilinear": pil_image.BILINEAR,
-        "bicubic": pil_image.BICUBIC,
-    }
-    # These methods were only introduced in version 3.4.0 (2016).
-    if hasattr(pil_image, "HAMMING"):
-        _PIL_INTERPOLATION_METHODS["hamming"] = pil_image.HAMMING
-    if hasattr(pil_image, "BOX"):
-        _PIL_INTERPOLATION_METHODS["box"] = pil_image.BOX
-    # This method is new in version 1.1.3 (2013).
-    if hasattr(pil_image, "LANCZOS"):
-        _PIL_INTERPOLATION_METHODS["lanczos"] = pil_image.LANCZOS
+from image_model import load_images
 
 
-def load_img(
-    path, grayscale=False, color_mode="rgb", target_size=None, interpolation="nearest"
+# logging.basicConfig(level=logging.DEBUG)
+
+from skimage import metrics as skimage_metrics
+
+
+def is_similar_frame(f1, f2, resize_to=(64, 64), thresh=0.5, return_score=False):
+    thresh = float(os.getenv("FRAME_SIMILARITY_THRESH", thresh))
+
+    if f1 is None or f2 is None:
+        return False
+
+    if isinstance(f1, str) and os.path.exists(f1):
+        try:
+            f1 = cv2.imread(f1)
+        except Exception as ex:
+            logging.exception(ex, exc_info=True)
+            return False
+
+    if isinstance(f2, str) and os.path.exists(f2):
+        try:
+            f2 = cv2.imread(f2)
+        except Exception as ex:
+            logging.exception(ex, exc_info=True)
+            return False
+
+    if resize_to:
+        f1 = cv2.resize(f1, resize_to)
+        f2 = cv2.resize(f2, resize_to)
+
+    if len(f1.shape) == 3:
+        f1 = f1[:, :, 0]
+
+    if len(f2.shape) == 3:
+        f2 = f2[:, :, 0]
+
+    score = skimage_metrics.structural_similarity(f1, f2, multichannel=False)
+
+    if return_score:
+        return score
+
+    if score >= thresh:
+        return True
+
+    return False
+
+
+def get_interest_frames_from_video(
+    video_path,
+    frame_similarity_threshold=0.5,
+    similarity_context_n_frames=3,
+    skip_n_frames=0.5,
+    output_frames_to_dir=None,
 ):
-    """Loads an image into PIL format.
-    
-    :param path: Path to image file.
-    :param grayscale: DEPRECATED use `color_mode="grayscale"`.
-    :param color_mode: One of "grayscale", "rgb", "rgba". Default: "rgb".
-        The desired image format.
-    :param target_size: Either `None` (default to original size)
-        or tuple of ints `(img_height, img_width)`.
-    :param interpolation: Interpolation method used to resample the image if the
-        target size is different from that of the loaded image.
-        Supported methods are "nearest", "bilinear", and "bicubic".
-        If PIL version 1.1.3 or newer is installed, "lanczos" is also
-        supported. If PIL version 3.4.0 or newer is installed, "box" and
-        "hamming" are also supported. By default, "nearest" is used.
-    
-    :return: A PIL Image instance.
-    """
-    if grayscale is True:
-        logging.warn("grayscale is deprecated. Please use " 'color_mode = "grayscale"')
-        color_mode = "grayscale"
-    if pil_image is None:
-        raise ImportError(
-            "Could not import PIL.Image. " "The use of `load_img` requires PIL."
+    skip_n_frames = float(os.getenv("SKIP_N_FRAMES", skip_n_frames))
+
+    important_frames = []
+    fps = 0
+    video_length = 0
+
+    try:
+        video = cv2.VideoCapture(video_path)
+        fps = video.get(cv2.CAP_PROP_FPS)
+        length = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        if skip_n_frames < 1:
+            skip_n_frames = int(skip_n_frames * fps)
+            logging.info(f"skip_n_frames: {skip_n_frames}")
+
+        video_length = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        for frame_i in range(length + 1):
+            read_flag, current_frame = video.read()
+
+            if not read_flag:
+                break
+
+            if skip_n_frames > 0:
+                if frame_i % skip_n_frames != 0:
+                    continue
+
+            frame_i += 1
+
+            found_similar = False
+            for context_frame_i, context_frame in reversed(
+                important_frames[-1 * similarity_context_n_frames :]
+            ):
+                if is_similar_frame(
+                    context_frame, current_frame, thresh=frame_similarity_threshold
+                ):
+                    logging.debug(f"{frame_i} is similar to {context_frame_i}")
+                    found_similar = True
+                    break
+
+            if not found_similar:
+                logging.debug(f"{frame_i} is added to important frames")
+                important_frames.append((frame_i, current_frame))
+                if output_frames_to_dir:
+                    if not os.path.exists(output_frames_to_dir):
+                        os.mkdir(output_frames_to_dir)
+
+                    output_frames_to_dir = output_frames_to_dir.rstrip("/")
+                    cv2.imwrite(
+                        f"{output_frames_to_dir}/{str(frame_i).zfill(10)}.png",
+                        current_frame,
+                    )
+
+        logging.info(
+            f"{len(important_frames)} important frames will be processed from {video_path} of length {length}"
         )
 
-    if isinstance(path, (str, io.IOBase)):
-        img = pil_image.open(path)
-    else:
-        path = cv2.cvtColor(path, cv2.COLOR_BGR2RGB)
-        img = pil_image.fromarray(path)
+    except Exception as ex:
+        logging.exception(ex, exc_info=True)
 
-    if color_mode == "grayscale":
-        if img.mode != "L":
-            img = img.convert("L")
-    elif color_mode == "rgba":
-        if img.mode != "RGBA":
-            img = img.convert("RGBA")
-    elif color_mode == "rgb":
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-    else:
-        raise ValueError('color_mode must be "grayscale", "rgb", or "rgba"')
-    if target_size is not None:
-        width_height_tuple = (target_size[1], target_size[0])
-        if img.size != width_height_tuple:
-            if interpolation not in _PIL_INTERPOLATION_METHODS:
-                raise ValueError(
-                    "Invalid interpolation method {} specified. Supported "
-                    "methods are {}".format(
-                        interpolation, ", ".join(_PIL_INTERPOLATION_METHODS.keys())
-                    )
-                )
-            resample = _PIL_INTERPOLATION_METHODS[interpolation]
-            img = img.resize(width_height_tuple, resample)
-    return img
-
-
-def img_to_array(img, data_format="channels_last", dtype="float32"):
-    """Converts a PIL Image instance to a Numpy array.
-    # Arguments
-        img: PIL Image instance.
-        data_format: Image data format,
-            either "channels_first" or "channels_last".
-        dtype: Dtype to use for the returned array.
-    # Returns
-        A 3D Numpy array.
-    # Raises
-        ValueError: if invalid `img` or `data_format` is passed.
-    """
-    if data_format not in {"channels_first", "channels_last"}:
-        raise ValueError("Unknown data_format: %s" % data_format)
-    # Numpy array x has format (height, width, channel)
-    # or (channel, height, width)
-    # but original PIL image has format (width, height, channel)
-    x = np.asarray(img, dtype=dtype)
-    if len(x.shape) == 3:
-        if data_format == "channels_first":
-            x = x.transpose(2, 0, 1)
-    elif len(x.shape) == 2:
-        if data_format == "channels_first":
-            x = x.reshape((1, x.shape[0], x.shape[1]))
-        else:
-            x = x.reshape((x.shape[0], x.shape[1], 1))
-    else:
-        raise ValueError("Unsupported image shape: %s" % (x.shape,))
-    return x
-
-def load_images(image_paths, image_size, image_names):
-    """
-    Function for loading images into numpy arrays for passing to model.predict
-    inputs:
-        image_paths: list of image paths to load
-        image_size: size into which images should be resized
-    
-    outputs:
-        loaded_images: loaded images on which keras model can run predictions
-        loaded_image_indexes: paths of images which the function is able to process
-    
-    """
-    loaded_images = []
-    loaded_image_paths = []
-
-    for i, img_path in enumerate(image_paths):
-        try:
-            image = load_img(img_path, target_size=image_size)
-            image = img_to_array(image)
-            image /= 255
-            loaded_images.append(image)
-            loaded_image_paths.append(image_names[i])
-        except Exception as ex:
-            logging.exception(f"Error reading {img_path} {ex}", exc_info=True)
-
-    return np.asarray(loaded_images), loaded_image_paths
-
+    return (
+        [i[0] for i in important_frames],
+        [i[1] for i in important_frames],
+        fps,
+        video_length,
+    )
 
 class Classifier:
     """
@@ -153,9 +141,77 @@ class Classifier:
         """
         model = Classifier()
         """
-        dirname = os.path.dirname(__file__)
-        model_path = os.path.join(dirname, "models/classifier_model.onnx")
+        url = "https://github.com/notAI-tech/NudeNet/releases/download/v0/classifier_model.onnx"
+        home = os.path.expanduser("~")
+        model_folder = os.path.join(home, ".NudeNet/")
+        if not os.path.exists(model_folder):
+            os.mkdir(model_folder)
+
+        model_path = os.path.join(model_folder, os.path.basename(url))
+
+        if not os.path.exists(model_path):
+            print("Downloading the checkpoint to", model_path)
+            pydload.dload(url, save_to_path=model_path, max_time=None)
+
         self.nsfw_model = onnxruntime.InferenceSession(model_path)
+
+    def classify_video(
+        self,
+        video_path,
+        batch_size=4,
+        image_size=(256, 256),
+        categories=["unsafe", "safe"],
+    ):
+        frame_indices = None
+        frame_indices, frames, fps, video_length = get_interest_frames_from_video(
+            video_path
+        )
+        logging.debug(
+            f"VIDEO_PATH: {video_path}, FPS: {fps}, Important frame indices: {frame_indices}, Video length: {video_length}"
+        )
+
+        frames, frame_names = load_images(frames, image_size, image_names=frame_indices)
+
+        if not frame_names:
+            return {}
+
+        preds = []
+        model_preds = []
+        while len(frames):
+            _model_preds = self.nsfw_model.run(
+                [self.nsfw_model.get_outputs()[0].name],
+                {self.nsfw_model.get_inputs()[0].name: frames[:batch_size]},
+            )[0]
+            model_preds.append(_model_preds)
+            preds += np.argsort(_model_preds, axis=1).tolist()
+            frames = frames[batch_size:]
+
+        probs = []
+        for i, single_preds in enumerate(preds):
+            single_probs = []
+            for j, pred in enumerate(single_preds):
+                single_probs.append(
+                    model_preds[int(i / batch_size)][int(i % batch_size)][pred]
+                )
+                preds[i][j] = categories[pred]
+
+            probs.append(single_probs)
+
+        return_preds = {
+            "metadata": {
+                "fps": fps,
+                "video_length": video_length,
+                "video_path": video_path,
+            },
+            "preds": {},
+        }
+
+        for i, frame_name in enumerate(frame_names):
+            return_preds["preds"][frame_name] = {}
+            for _ in range(len(preds[i])):
+                return_preds["preds"][frame_name][preds[i][_]] = probs[i][_]
+
+        return return_preds
 
     def classify(
         self,
@@ -215,94 +271,23 @@ class Classifier:
 
         return images_preds
 
-def image_moderate(image_path):
 
+def check_visual_moderation(video_filepath):
     classifier = Classifier()
-
-    abc = classifier.classify(image_path)
-    return abc
-
-
-def extract_frames(video_path, output_dir):
-    cap = cv2.VideoCapture(video_path)
-    frame_count = 0
-    frame_per_seconds = 0
-    fps = cap.get(cv2.CAP_PROP_FPS)  # Get frames per second
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_count % int(fps) == 0:
-            output_path = os.path.join(output_dir, f"frame_{frame_per_seconds}.jpg")
-            cv2.imwrite(output_path, frame)
-            frame_per_seconds += 1
-        frame_count += 1
-
-    cap.release()
-    cv2.destroyAllWindows()
-    return frame_per_seconds
-
-
-def load_images(image_dir, image_size, image_names):
-    loaded_images = []
-    loaded_image_paths = []
-
-    for i, image_path_new in enumerate(image_names):
-        image_path = image_path_new
-        image_name = image_path.split("/")[-1]
-        try:
-            image = load_img(image_path, target_size=image_size)
-            image = img_to_array(image)
-            image /= 255
-            loaded_images.append(image)
-            loaded_image_paths.append(image_name)
-        except Exception as ex:
-            logging.exception(f"Error reading {image_path} {ex}", exc_info=True)
-
-    return np.asarray(loaded_images), loaded_image_paths
-
-def check_visual_moderation(video_path, output_dir="./video_frames", image_size=(256, 256)):
-    # Create output directory if it doesn't exist
-    # if not os.path.exists(output_dir):
-    #     os.makedirs(output_dir)
-
-    # Extract frames from the video
-    frame_per_seconds = extract_frames(video_path, output_dir)
-
-    # Load the classifier
-    classifier = Classifier()
-
-    # Prepare image paths and run moderation on frames
-    image_names = [f"frame_{i}.jpg" for i in range(frame_per_seconds)]
-    image_paths = [os.path.join(output_dir, image_name) for image_name in image_names]
-    scores = classifier.classify(image_paths, image_size=image_size)
-
-    # Delete the extracted frames
-    for image_path in image_paths:
-        os.remove(image_path)
-
-    # Print moderation scores for each frame
-    count = 0
-    for image_name, score in scores.items():
-        print(f"Image: {image_name}, Score: {score}")
-        for flag, prob in score.items():
-            if flag == "unsafe" and prob > 0.6:
-                count+=1
-
-    percentage_threshold = 0.1 * frame_per_seconds
-
-    if count >= percentage_threshold:
+    result = classifier.classify_video(video_filepath)
+    print(result)
+    frame_count = len(result['preds'])  # Total number of frames
+    unsafe_count = sum(1 for frame in result['preds'].values() if frame['unsafe'] > 0.5)  # Count of frames with unsafe score > 0.5
+    if unsafe_count / frame_count > 0.1:
+        video_safety = "Unsafe"
         print("Visual Unsafe")
-        return "Unsafe"
     else:
-        print("Visual Safe")
-        return "Safe"
+        video_safety = "Safe"
+        print("Visual Safe") 
 
+    return video_safety
 
 if __name__ == "__main__":
-    video_path = input("Enter Video Path: ")
 
-    flag = check_visual_moderation(video_path)
-    print(flag)
+    videofilepath = input("Enter video path:")
+    check_visual_moderation(videofilepath)

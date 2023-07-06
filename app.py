@@ -31,7 +31,11 @@ def text_mod():
             elif 'video' in request.files:
                 input_video = request.files['video']
                 video_path = save_video(input_video)
+                from time import time
+                st = time()
                 response = video_moderate(video_path)
+                et = time()
+                print("TIMEEEEEEEEEEEEEEEE" , et-st)
                 return render_template('index.html', response=response, type='video')
             
             elif 'audio' in request.files:
