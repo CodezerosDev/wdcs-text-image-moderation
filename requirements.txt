@@ -37,4 +37,4 @@ googletrans==4.0.0-rc1
 moviepy==1.0.3
 librosa==0.10.0.post2
 openai-whisper==20230314
-skimage==0.21.0
+scikit-image==0.21.0
