@@ -1,17 +1,16 @@
-import cv2
-import os
 import logging
+import os
 
-import pydload
+import cv2
 import numpy as np
 import onnxruntime
+import pydload
+from skimage import metrics as skimage_metrics
 
 from image_model import load_images
 
 
 # logging.basicConfig(level=logging.DEBUG)
-
-from skimage import metrics as skimage_metrics
 
 
 def is_similar_frame(f1, f2, resize_to=(64, 64), thresh=0.5, return_score=False):
@@ -92,12 +91,8 @@ def get_interest_frames_from_video(
             frame_i += 1
 
             found_similar = False
-            for context_frame_i, context_frame in reversed(
-                important_frames[-1 * similarity_context_n_frames :]
-            ):
-                if is_similar_frame(
-                    context_frame, current_frame, thresh=frame_similarity_threshold
-                ):
+            for context_frame_i, context_frame in reversed(important_frames[-1 * similarity_context_n_frames :]):
+                if is_similar_frame(context_frame, current_frame, thresh=frame_similarity_threshold):
                     logging.debug(f"{frame_i} is similar to {context_frame_i}")
                     found_similar = True
                     break
@@ -115,9 +110,7 @@ def get_interest_frames_from_video(
                         current_frame,
                     )
 
-        logging.info(
-            f"{len(important_frames)} important frames will be processed from {video_path} of length {length}"
-        )
+        logging.info(f"{len(important_frames)} important frames will be processed from {video_path} of length {length}")
 
     except Exception as ex:
         logging.exception(ex, exc_info=True)
@@ -128,6 +121,7 @@ def get_interest_frames_from_video(
         fps,
         video_length,
     )
+
 
 class Classifier:
     """
@@ -153,7 +147,7 @@ class Classifier:
             print("Downloading the checkpoint to", model_path)
             pydload.dload(url, save_to_path=model_path, max_time=None)
 
-        self.nsfw_model = onnxruntime.InferenceSession(model_path)
+        self.nsfw_model = onnxruntime.InferenceSession("models/classifier_model.onnx")
 
     def classify_video(
         self,
@@ -163,9 +157,7 @@ class Classifier:
         categories=["unsafe", "safe"],
     ):
         frame_indices = None
-        frame_indices, frames, fps, video_length = get_interest_frames_from_video(
-            video_path
-        )
+        frame_indices, frames, fps, video_length = get_interest_frames_from_video(video_path)
         logging.debug(
             f"VIDEO_PATH: {video_path}, FPS: {fps}, Important frame indices: {frame_indices}, Video length: {video_length}"
         )
@@ -190,9 +182,7 @@ class Classifier:
         for i, single_preds in enumerate(preds):
             single_probs = []
             for j, pred in enumerate(single_preds):
-                single_probs.append(
-                    model_preds[int(i / batch_size)][int(i % batch_size)][pred]
-                )
+                single_probs.append(model_preds[int(i / batch_size)][int(i % batch_size)][pred])
                 preds[i][j] = categories[pred]
 
             probs.append(single_probs)
@@ -230,9 +220,7 @@ class Classifier:
         if not isinstance(image_paths, list):
             image_paths = [image_paths]
 
-        loaded_images, loaded_image_paths = load_images(
-            image_paths, image_size, image_names=image_paths
-        )
+        loaded_images, loaded_image_paths = load_images(image_paths, image_size, image_names=image_paths)
 
         if not loaded_image_paths:
             return {}
@@ -252,9 +240,7 @@ class Classifier:
         for i, single_preds in enumerate(preds):
             single_probs = []
             for j, pred in enumerate(single_preds):
-                single_probs.append(
-                    model_preds[int(i / batch_size)][int(i % batch_size)][pred]
-                )
+                single_probs.append(model_preds[int(i / batch_size)][int(i % batch_size)][pred])
                 preds[i][j] = categories[pred]
 
             probs.append(single_probs)
@@ -276,18 +262,20 @@ def check_visual_moderation(video_filepath):
     classifier = Classifier()
     result = classifier.classify_video(video_filepath)
     print(result)
-    frame_count = len(result['preds'])  # Total number of frames
-    unsafe_count = sum(1 for frame in result['preds'].values() if frame['unsafe'] > 0.5)  # Count of frames with unsafe score > 0.5
+    frame_count = len(result["preds"])  # Total number of frames
+    unsafe_count = sum(
+        1 for frame in result["preds"].values() if frame["unsafe"] > 0.5
+    )  # Count of frames with unsafe score > 0.5
     if unsafe_count / frame_count > 0.1:
         video_safety = "Unsafe"
         print("Visual Unsafe")
     else:
         video_safety = "Safe"
-        print("Visual Safe") 
+        print("Visual Safe")
 
     return video_safety
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     videofilepath = input("Enter video path:")
     check_visual_moderation(videofilepath)

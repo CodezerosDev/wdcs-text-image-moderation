@@ -1,10 +1,12 @@
-import os
 import io
 import logging
+import os
+
 import cv2
-from PIL import Image as pil_image
 import numpy as np
 import onnxruntime
+from PIL import Image as pil_image
+
 
 if pil_image is not None:
     _PIL_INTERPOLATION_METHODS = {
@@ -22,11 +24,9 @@ if pil_image is not None:
         _PIL_INTERPOLATION_METHODS["lanczos"] = pil_image.LANCZOS
 
 
-def load_img(
-    path, grayscale=False, color_mode="rgb", target_size=None, interpolation="nearest"
-):
+def load_img(path, grayscale=False, color_mode="rgb", target_size=None, interpolation="nearest"):
     """Loads an image into PIL format.
-    
+
     :param path: Path to image file.
     :param grayscale: DEPRECATED use `color_mode="grayscale"`.
     :param color_mode: One of "grayscale", "rgb", "rgba". Default: "rgb".
@@ -39,16 +39,14 @@ def load_img(
         If PIL version 1.1.3 or newer is installed, "lanczos" is also
         supported. If PIL version 3.4.0 or newer is installed, "box" and
         "hamming" are also supported. By default, "nearest" is used.
-    
+
     :return: A PIL Image instance.
     """
     if grayscale is True:
         logging.warn("grayscale is deprecated. Please use " 'color_mode = "grayscale"')
         color_mode = "grayscale"
     if pil_image is None:
-        raise ImportError(
-            "Could not import PIL.Image. " "The use of `load_img` requires PIL."
-        )
+        raise ImportError("Could not import PIL.Image. " "The use of `load_img` requires PIL.")
 
     if isinstance(path, (str, io.IOBase)):
         img = pil_image.open(path)
@@ -73,9 +71,7 @@ def load_img(
             if interpolation not in _PIL_INTERPOLATION_METHODS:
                 raise ValueError(
                     "Invalid interpolation method {} specified. Supported "
-                    "methods are {}".format(
-                        interpolation, ", ".join(_PIL_INTERPOLATION_METHODS.keys())
-                    )
+                    "methods are {}".format(interpolation, ", ".join(_PIL_INTERPOLATION_METHODS.keys()))
                 )
             resample = _PIL_INTERPOLATION_METHODS[interpolation]
             img = img.resize(width_height_tuple, resample)
@@ -112,17 +108,18 @@ def img_to_array(img, data_format="channels_last", dtype="float32"):
         raise ValueError("Unsupported image shape: %s" % (x.shape,))
     return x
 
+
 def load_images(image_paths, image_size, image_names):
     """
     Function for loading images into numpy arrays for passing to model.predict
     inputs:
         image_paths: list of image paths to load
         image_size: size into which images should be resized
-    
+
     outputs:
         loaded_images: loaded images on which keras model can run predictions
         loaded_image_indexes: paths of images which the function is able to process
-    
+
     """
     loaded_images = []
     loaded_image_paths = []
@@ -173,9 +170,7 @@ class Classifier:
         if not isinstance(image_paths, list):
             image_paths = [image_paths]
 
-        loaded_images, loaded_image_paths = load_images(
-            image_paths, image_size, image_names=image_paths
-        )
+        loaded_images, loaded_image_paths = load_images(image_paths, image_size, image_names=image_paths)
 
         if not loaded_image_paths:
             return {}
@@ -195,9 +190,7 @@ class Classifier:
         for i, single_preds in enumerate(preds):
             single_probs = []
             for j, pred in enumerate(single_preds):
-                single_probs.append(
-                    model_preds[int(i / batch_size)][int(i % batch_size)][pred]
-                )
+                single_probs.append(model_preds[int(i / batch_size)][int(i % batch_size)][pred])
                 preds[i][j] = categories[pred]
 
             probs.append(single_probs)
@@ -214,16 +207,14 @@ class Classifier:
 
         return images_preds
 
-def image_moderate(image_path):
 
+def image_moderate(image_path):
     classifier = Classifier()
 
     abc = classifier.classify(image_path)
     return abc
 
 
-
 if __name__ == "__main__":
-
     input_path = input("Enter Image Path: ")
     image_moderate(input_path)

@@ -1,9 +1,11 @@
 import os
+
 from moviepy.editor import VideoFileClip
+
 from audio_model import audio_moderate
 
 
-### Extract Audio from Video ### 
+### Extract Audio from Video ###
 def video_to_audio(video_path, audio_path):
     video = VideoFileClip(video_path)
     try:
@@ -21,7 +23,8 @@ def video_to_audio(video_path, audio_path):
                 return True
     except:
         print("Video has no Audio")
-    
+
+
 def create_audio_path(video_path):
     filename = os.path.basename(os.path.splitext(video_path)[0])
     # if not os.path.exists("Audios"):
@@ -51,8 +54,8 @@ def check_audio_moderation(video_path):
     else:
         return False
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     video_file = "./Videos/Spanish.mp4"
 
     flag = check_audio_moderation(video_file)
