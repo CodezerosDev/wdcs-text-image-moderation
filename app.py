@@ -1,5 +1,6 @@
 import os
 
+import openai
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
 
@@ -13,6 +14,10 @@ load_dotenv()
 app = Flask(__name__)
 HOST = os.getenv("HOST")
 PORT = os.getenv("PORT")
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
 
 @app.route("/", methods=["GET", "POST"])

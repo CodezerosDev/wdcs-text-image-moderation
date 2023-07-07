@@ -18,7 +18,7 @@ def duration_check(audio_file):
 def transcribe_audio(audio_file):
     print("Transcribing the Audio")
     audio, sr = librosa.load(audio_file)
-    audio = audio / np.max(np.abs(audio))
+    audio /= np.max(np.abs(audio))
     model = whisper.load_model("base")
     result = model.transcribe(audio)
     return result
@@ -44,6 +44,9 @@ def audio_moderate(audio_file):
         return "Please upload audio file having length of duration less than 45 seconds"
     else:
         transcribed_result = transcribe_audio(audio_file)
+        print(transcribed_result)
+        if not transcribed_result["text"]:
+            return "No text found in the audio"
         translated_text = translate_text(transcribed_result["text"], "en")
         MODERATION_CLASS = check_moderation(translated_text)
         return MODERATION_CLASS
