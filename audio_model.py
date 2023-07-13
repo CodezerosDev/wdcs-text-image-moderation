@@ -4,6 +4,7 @@ import openai
 import whisper
 from googletrans import Translator
 from moviepy.editor import AudioFileClip
+from text_model import predict_text_mod
 
 
 def duration_check(audio_file):
@@ -31,13 +32,6 @@ def translate_text(text, target_language):
     return translation.text
 
 
-def check_moderation(text, model_name="text-moderation-latest"):
-    print("Checking Moderation of the Text")
-    response = openai.Moderation.create(input=text, model=model_name)
-    moderation_class = response["results"][0]
-    return moderation_class
-
-
 def audio_moderate(audio_file):
     length = duration_check(audio_file)
     if length == False:
@@ -48,7 +42,7 @@ def audio_moderate(audio_file):
         if not transcribed_result["text"]:
             return "No text found in the audio"
         translated_text = translate_text(transcribed_result["text"], "en")
-        MODERATION_CLASS = check_moderation(translated_text)
+        MODERATION_CLASS = predict_text_mod(translated_text)
         return MODERATION_CLASS
 
 
