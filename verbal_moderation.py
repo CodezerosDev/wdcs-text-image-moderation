@@ -47,8 +47,8 @@ def check_audio_moderation(video_path):
     duration_check = video_to_audio(video_path, audio_path)
     if duration_check == True:
         moderation_score = audio_moderate(audio_path)
-        flag = flag_result(moderation_score)
-        return flag
+        # flag = flag_result(moderation_score)
+        return moderation_score
     elif duration_check == "No audio":
         return "No audio"
     else:

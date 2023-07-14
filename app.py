@@ -1,5 +1,5 @@
 import os
-
+from time import time
 import openai
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
@@ -38,8 +38,6 @@ def text_mod():
         elif "video" in request.files:
             input_video = request.files["video"]
             video_path = save_video(input_video)
-            from time import time
-
             st = time()
             response = video_moderate(video_path)
             et = time()

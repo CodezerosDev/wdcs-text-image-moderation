@@ -261,19 +261,16 @@ class Classifier:
 def check_visual_moderation(video_filepath):
     classifier = Classifier()
     result = classifier.classify_video(video_filepath)
-    print(result)
-    frame_count = len(result["preds"])  # Total number of frames
-    unsafe_count = sum(
-        1 for frame in result["preds"].values() if frame["unsafe"] > 0.5
-    )  # Count of frames with unsafe score > 0.5
-    if unsafe_count / frame_count > 0.1:
-        video_safety = "Unsafe"
-        print("Visual Unsafe")
-    else:
-        video_safety = "Safe"
-        print("Visual Safe")
 
-    return video_safety
+    frame_count = len(result["preds"])  # Total number of frames
+
+    unsafe_count = 0
+    for frame in result["preds"].values():
+        if frame["unsafe"] > 0.5:
+            unsafe_count += 1
+    unsafe_ratio = unsafe_count / frame_count
+    
+    return unsafe_ratio
 
 
 if __name__ == "__main__":
